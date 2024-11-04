@@ -22,6 +22,11 @@ def list_assignments(p):
 @decorators.authenticate_principal
 def upsert_assignment(p, incoming_payload):
     """Create or Edit an assignment"""
+    
+    # Validate that content is not None
+    if incoming_payload.get('content') is None:
+        return APIResponse.respond_error(message="Content cannot be null", status=400)
+    
     assignment = AssignmentSchema().load(incoming_payload)
     assignment.student_id = p.student_id
 
@@ -37,6 +42,15 @@ def upsert_assignment(p, incoming_payload):
 def submit_assignment(p, incoming_payload):
     """Submit an assignment"""
     submit_assignment_payload = AssignmentSubmitSchema().load(incoming_payload)
+
+    # Fetch assignment and check if it's in DRAFT state
+    assignment = Assignment.get_by_id(submit_assignment_payload.id)
+    if assignment.state != "DRAFT":
+        return APIResponse.respond_error_message(
+            error_name="FyleError",
+            message="only a draft assignment can be submitted",
+            status=400
+        )
 
     submitted_assignment = Assignment.submit(
         _id=submit_assignment_payload.id,

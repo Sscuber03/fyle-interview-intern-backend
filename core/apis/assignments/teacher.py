@@ -12,7 +12,7 @@ teacher_assignments_resources = Blueprint('teacher_assignments_resources', __nam
 @decorators.authenticate_principal
 def list_assignments(p):
     """Returns list of assignments"""
-    teachers_assignments = Assignment.get_assignments_by_teacher()
+    teachers_assignments = Assignment.get_assignments_by_teacher(p.teacher_id)
     teachers_assignments_dump = AssignmentSchema().dump(teachers_assignments, many=True)
     return APIResponse.respond(data=teachers_assignments_dump)
 
@@ -23,6 +23,21 @@ def list_assignments(p):
 def grade_assignment(p, incoming_payload):
     """Grade an assignment"""
     grade_assignment_payload = AssignmentGradeSchema().load(incoming_payload)
+    
+    # Fetch assignment to validate teacher authorization
+    assignment = Assignment.get_by_id(grade_assignment_payload.id)
+    
+    # Check if the assignment exists
+    if not assignment:
+        return APIResponse.respond_error(status=404)
+    
+    # Ensure the assignment is not in DRAFT state
+    if assignment.state == 'DRAFT':
+        return APIResponse.respond_error()
+    
+    # Check if assignment is assigned to the authenticated teacher
+    if assignment.teacher_id != p.teacher_id:
+        return APIResponse.respond_error()
 
     graded_assignment = Assignment.mark_grade(
         _id=grade_assignment_payload.id,
