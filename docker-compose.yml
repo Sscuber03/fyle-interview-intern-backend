@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "7755:7755"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=core/server.py
